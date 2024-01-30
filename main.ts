@@ -1,4 +1,4 @@
-import { addIcon, Notice, Plugin, TFile } from 'obsidian';
+import { addIcon, Notice, Plugin, TagCache, TFile } from 'obsidian';
 import { ISettings } from 'src/conf/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { CardsService } from 'src/services/cards';
@@ -8,6 +8,7 @@ import { noticeTimeout, flashcardsIcon } from 'src/conf/constants';
 export default class ObsidianFlashcard extends Plugin {
 	private settings: ISettings
 	private cardsService: CardsService
+	private syncInProgress: boolean = false;
 
 	async onload() {
 		addIcon("flashcards", flashcardsIcon)
@@ -31,6 +32,17 @@ export default class ObsidianFlashcard extends Plugin {
 					return true;
 				}
 				return false;
+			}
+		});
+
+		this.addCommand({
+			id: 'generate-flashcards-for-tag',
+			name: 'Generate for files with tag',
+			checkCallback: (checking: boolean) => {
+				if (!checking) {
+					this.generateCardsForTag();
+				}
+				return true;
 			}
 		});
 
@@ -58,8 +70,8 @@ export default class ObsidianFlashcard extends Plugin {
 		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, inlineID: false, contextSeparator: " > ", deck: "Default", folderBasedDeck: true, flashcardsTag: "card", inlineSeparator: "::", inlineSeparatorReverse: ":::", defaultAnkiTag: "obsidian", ankiConnectPermission: false }
 	}
 
-	private generateCards(activeFile: TFile) {
-		this.cardsService.execute(activeFile).then(res => {
+	private async generateCards(activeFile: TFile) {
+		await this.cardsService.execute(activeFile).then(res => {
 			for (const r of res) {
 				new Notice(r, noticeTimeout)
 			}
@@ -68,4 +80,35 @@ export default class ObsidianFlashcard extends Plugin {
 			Error(err)
 		})
 	}
+
+	private async generateCardsForTag() {
+		if (this.syncInProgress) {
+			return;
+		}
+		this.syncInProgress = true;
+		new Notice("Start complete Anki sync", noticeTimeout)
+		const flashcardsTag = "#" + (this.settings.flashcardsTag as string); 
+		const filesWithTag = this.app.vault.getFiles().filter(file => {
+			const fileTags = this.app.metadataCache.getFileCache(file)?.tags || [];
+			const tagStrings = fileTags.map(tag => tag.tag);
+			
+            return tagStrings.includes(flashcardsTag);
+		});
+
+		let noteNumber = 1;
+
+		for (const file of filesWithTag) {
+			try {
+				const res = await this.cardsService.execute(file);
+				new Notice(`Note ${noteNumber++} of ${filesWithTag.length}: \n${res.join('\n')}`, noticeTimeout);
+				console.log(res);
+			} catch (err) {
+				Error(err);
+			}
+		}
+
+		this.syncInProgress = false;
+		new Notice("Finished complete Anki sync", noticeTimeout)
+	}
+	
 }
