@@ -13,6 +13,7 @@ import { arrayBufferToBase64 } from "src/utils";
 import { Regex } from "src/conf/regex";
 import { noticeTimeout } from "src/conf/constants";
 import { Inlinecard } from "src/entities/inlinecard";
+import { waitForDebugger } from "inspector";
 
 export class CardsService {
   private app: App;
@@ -65,7 +66,6 @@ export class CardsService {
     } else {
       deckName = this.settings.deck;
     }
-
     try {
       this.anki.storeCodeHighlightMedias();
       await this.anki.createModels(
@@ -143,7 +143,7 @@ export class CardsService {
         }
       }
 
-      this.updateFrontmatter(frontmatter, deckName);
+      this.updateFrontmatter(deckName, activeFile);
 
       if (!this.notifications.length) {
         this.notifications.push("Nothing to do. Everything is up to date");
@@ -224,9 +224,7 @@ export class CardsService {
     }
   }
 
-  private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
-    const activeFile = this.app.workspace.getActiveFile();
-
+  private updateFrontmatter(deckName: string, activeFile: TFile) {
     this.app.fileManager.processFrontMatter(activeFile, (frontmatter) => {
       frontmatter["cards-deck"] = deckName;
     });
