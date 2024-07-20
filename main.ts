@@ -37,7 +37,7 @@ export default class ObsidianFlashcard extends Plugin {
 
 		this.addCommand({
 			id: 'generate-flashcards-for-tag',
-			name: 'Generate for files with tag',
+			name: 'Generate flashcards for files with tag',
 			checkCallback: (checking: boolean) => {
 				if (!checking) {
 					this.generateCardsForTag();
@@ -81,34 +81,86 @@ export default class ObsidianFlashcard extends Plugin {
 		})
 	}
 
-	private async generateCardsForTag() {
-		if (this.syncInProgress) {
-			return;
-		}
-		this.syncInProgress = true;
-		new Notice("Start complete Anki sync", noticeTimeout)
-		const flashcardsTag = "#" + (this.settings.flashcardsTag as string); 
-		const filesWithTag = this.app.vault.getFiles().filter(file => {
-			const fileTags = this.app.metadataCache.getFileCache(file)?.tags || [];
-			const tagStrings = fileTags.map(tag => tag.tag);
-			
+    private padMessage(message: string): string {
+		const maxLength = 100;
+        const lines = message.split('\n');
+        return lines.map(line => line.padEnd(maxLength)).join('\n');
+    }
+
+    private async generateCardsForTag() {
+        if (this.syncInProgress) {
+            return;
+        }
+        this.syncInProgress = true;
+
+        const flashcardsTag = "#" + (this.settings.flashcardsTag as string);
+        const filesWithTag = this.app.vault.getFiles().filter(file => {
+            const fileTags = this.app.metadataCache.getFileCache(file)?.tags || [];
+            const tagStrings = fileTags.map(tag => tag.tag);
             return tagStrings.includes(flashcardsTag);
-		});
+        });
 
-		let noteNumber = 1;
+        let noteNumber = 1;
+        const totalNotes = filesWithTag.length;
+        let syncNotice = new Notice(this.padMessage(`Syncing Anki cards: 0/${totalNotes}`), 0);
 
-		for (const file of filesWithTag) {
-			try {
-				const res = await this.cardsService.execute(file);
-				new Notice(`Note ${noteNumber++} of ${filesWithTag.length}: \n${res.join('\n')}`, noticeTimeout);
-				console.log(res);
-			} catch (err) {
-				Error(err);
-			}
-		}
+        let totalUpdated = 0;
+        let totalAdded = 0;
+        let totalRemoved = 0;
+        let errors: string[] = [];
 
-		this.syncInProgress = false;
-		new Notice("Finished complete Anki sync", noticeTimeout)
-	}
-	
+        for (const file of filesWithTag) {
+            try {
+                const res = await this.cardsService.execute(file);
+                const progressMessage = `Syncing Anki cards: ${noteNumber}/${totalNotes}\nLast synced: ${file.name}`;
+                syncNotice.setMessage(this.padMessage(progressMessage));
+                console.log(res);
+
+                // Count updates, additions, and removals based on res content
+                res.forEach(message => {
+                    if (message.includes("Updated successfully")) {
+                        const match = message.match(/Updated successfully (\d+)\/(\d+) cards/);
+                        if (match) {
+                            totalUpdated += parseInt(match[1]);
+                        }
+                    } else if (message.includes("Inserted successfully")) {
+                        const match = message.match(/Inserted successfully (\d+)\/(\d+) cards/);
+                        if (match) {
+                            totalAdded += parseInt(match[1]);
+                        }
+                    } else if (message.includes("Deleted successfully")) {
+                        const match = message.match(/Deleted successfully (\d+)\/(\d+) cards/);
+                        if (match) {
+                            totalRemoved += parseInt(match[1]);
+                        }
+                    } else if (message.startsWith("Error:")) {
+                        errors.push(`${file.name}: ${message}`);
+                    }
+                });
+
+                noteNumber++;
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                errors.push(`${file.name}: ${errorMessage}`);
+            }
+        }
+
+        this.syncInProgress = false;
+        let finalMessage = `Finished Anki sync: ${totalNotes} notes processed\n` +
+                           `Updated: ${totalUpdated}\n` +
+                           `Added: ${totalAdded}\n` +
+                           `Removed: ${totalRemoved}`;
+        
+        if (errors.length > 0) {
+            finalMessage += `\n\nErrors occurred in ${errors.length} files:`;
+            errors.forEach((error, index) => {
+                finalMessage += `\n${index + 1}. ${error}`;
+            });
+        }
+
+        syncNotice.setMessage(finalMessage);
+        console.log(finalMessage);
+        setTimeout(() => syncNotice.hide(), 12000);
+    }
+
 }
