@@ -1,4 +1,4 @@
-> :warning: **I am currently looking out for a co-maintainer.** Look at [#125](https://github.com/reuseman/flashcards-obsidian/issues/125), and if you are interested let me know :)
+This [fork of the original repo](https://github.com/reuseman/flashcards-obsidian/) adds bulk sync for all files and only modified files with the hashtag. Since the original repo is not maintained any more.
 ---
 
 # Flashcards
