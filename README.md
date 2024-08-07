@@ -62,8 +62,3 @@ The wiki explains in detail [how to use it](https://github.com/reuseman/flashcar
 
 ## Contributing
 Contributions via bug reports, bug fixes, are welcome. If you have ideas about features to be implemented, please open an issue so we can discuss the best way to implement it. For more details check [Contributing.md](docs/CONTRIBUTING.md)
-
-## Support
-If flashcards plugin is useful to you and you want to support me, you can thank me with a coffee :)
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V0ABKAF)
