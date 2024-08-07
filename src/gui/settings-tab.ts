@@ -139,6 +139,45 @@ export class SettingsTab extends PluginSettingTab {
               plugin.saveData(plugin.settings);
             });
         });
+    
+    new Setting(containerEl)
+	  .setName("Ribbon Icon Action")
+	  .setDesc("Choose which action to perform when clicking the ribbon icon")
+	  .addDropdown(dropdown => dropdown
+		.addOption('current', 'Sync current file')
+		.addOption('modified', 'Sync modified files')
+		.addOption('all', 'Sync all files')
+		.setValue(plugin.settings.ribbonIconAction)
+		.onChange(async (value: 'current' | 'modified' | 'all') => {
+		  plugin.settings.ribbonIconAction = value;
+      await plugin.saveData(plugin.settings);
+    }));
+        
+    containerEl.createEl("h2", { text: "Sync Settings" });
+    
+    new Setting(containerEl)
+      .setName("Last Sync Time")
+      .setDesc("The last time flashcards were synced with Anki")
+      .addText(text => text
+        .setValue(new Date(plugin.settings.lastSyncTimestamp).toLocaleString())
+        .setDisabled(true))
+      .addButton(button => button
+        .setButtonText("Reset")
+        .onClick(async () => {
+          plugin.settings.lastSyncTimestamp = 0;
+          await plugin.saveData(plugin.settings);
+          this.display();
+          new Notice("Last sync time has been reset");
+        }));
+
+    new Setting(containerEl)
+      .setName("Force Sync")
+      .setDesc("Sync all flashcards, regardless of their modification time")
+      .addButton(button => button
+        .setButtonText("Force Sync")
+        .onClick(() => {
+          plugin.generateCardsForTag(true);
+        }));
 
     containerEl.createEl("h2", { text: "Cards Identification" });
 

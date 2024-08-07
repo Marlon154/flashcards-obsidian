@@ -11,4 +11,6 @@ export interface ISettings {
   inlineSeparatorReverse: string;
   defaultAnkiTag: string;
   ankiConnectPermission: boolean;
+  lastSyncTimestamp: number;
+  ribbonIconAction: 'current' | 'modified' | 'all';
 }
